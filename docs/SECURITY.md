@@ -60,19 +60,13 @@ On Windows platforms, access to legacy DOS device names (which can hang processe
 
 On Android devices, MachineBridge implements a dual-mode execution model:
 
-```text
-[ Android Operating System ]
-       │
-       ├── Untrusted App Sandbox (com.machinebridge.app)
-       │     - UID: 10171 (Unprivileged)
-       │     - Files: /data/user/0/com.machinebridge.app/files
-       │     - Shell: /system/bin/sh (standard permissions)
-       │     - Cannot access other apps or protected system directories
-       │
-       └── Root Elevation (Optional, on rooted devices with Magisk/KernelSU)
-             - Verified via: su -c "id -u" == 0
-             - Spawned only when privileged execution is explicitly requested
-             - The server process itself remains in the app sandbox UID (10171)
+```mermaid
+flowchart TD
+    Android["Android Operating System"]
+
+    Android --> Sandbox["Untrusted App Sandbox (com.machinebridge.app)<br/>• UID = 10171 (Unprivileged)<br/>• Storage = /data/user/0/com.machinebridge.app/files<br/>• Shell = /system/bin/sh (standard)<br/>• Isolated from protected system paths"]
+
+    Android --> Root["Root Elevation (Magisk / KernelSU)<br/>• Verification: su -c 'id -u' == 0<br/>• Spawned only on explicit elevation request<br/>• Server process stays in App Sandbox UID"]
 ```
 
 This ensures that running the server on an Android phone never exposes the root shell unless explicitly requested and permitted by the device's superuser manager.

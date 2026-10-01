@@ -76,6 +76,19 @@ Measures the total round-trip time of `execute_command` over HTTP REST with the 
 | JSON Serialization & HTTP Response | 0.10 ms | 0.08 ms | 0.83 ms | 0.68 ms |
 | **Total Round-Trip** | **2.10 ms** | **0.93 ms** | **24.80 ms** | **11.50 ms** |
 
+```mermaid
+flowchart LR
+    subgraph CPP["C++20 Native Pipeline: ~2.10 ms Total"]
+        direction LR
+        P1["HTTP Parse<br/>0.08 ms"] --> A1["Constant Auth<br/>0.02 ms"] --> S1["Process Spawn<br/>1.45 ms"] --> D1["Pipe Drain<br/>0.45 ms"] --> R1["Response<br/>0.10 ms"]
+    end
+
+    subgraph Node["Node.js V8 Pipeline: ~24.80 ms Total (11.8x slower)"]
+        direction LR
+        P2["Fastify Parse<br/>0.85 ms"] --> A2["Auth Hook<br/>0.12 ms"] --> S2["node-pty Spawn<br/>18.20 ms"] --> D2["V8 Buffer Copy<br/>4.80 ms"] --> R2["JSON Stringify<br/>0.83 ms"]
+    end
+```
+
 ---
 
 ## 4. Platform-Specific Performance Profiles

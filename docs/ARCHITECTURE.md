@@ -6,61 +6,42 @@
 
 MachineBridge eliminates multi-daemon deployment complexity, external database dependencies, and heavy language runtimes (Node.js, Python, JVM, Boost). It compiles to a lean, standalone native binary (~1 MB) and runs identically across Windows desktops, Linux servers, Android Termux, rooted Android devices, and unprivileged Android application sandboxes.
 
-```text
-                             ┌────────────────────────────────────────────────────────┐
-                             │                    External Clients                    │
-                             │   (Claude Desktop, ChatGPT, IDE Agents, CLI Client)    │
-                             └───────────────────────────┬────────────────────────────┘
-                                                         │
-                                    [HTTP/REST, SSE, WebSocket, Stdio, or Cloudflare Tunnel]
-                                                         │
-                                                         ▼
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ MachineBridge Unified C++20 Server                                                                                  │
-│                                                                                                                     │
-│   ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐   │
-│   │                                            HttpServer Listener                                              │   │
-│   │  - REST Endpoints (/health, /api/environment, /api/status, /mcp)                                            │   │
-│   │  - Server-Sent Events (/sse, /messages) with client session tracking                                        │   │
-│   │  - WebSocket Server (/ws) with bi-directional framing and ANSI terminal streaming                           │   │
-│   │  - Constant-time X-API-Key authentication & RFC 8032 Ed25519 signature verification                         │   │
-│   │  - OAuth 2.1 PKCE authorization endpoint and token exchange                                                 │   │
-│   └──────────────────────────────────────────────────────┬──────────────────────────────────────────────────────┘   │
-│                                                          │                                                          │
-│   ┌──────────────────────────────────────────────────────▼──────────────────────────────────────────────────────┐   │
-│   │                                              McpServer Engine                                               │   │
-│   │  - 15 Verified Tools (Terminal execution, atomic filesystem operations, PTY session lifecycle)              │   │
-│   │  - JSON-RPC 2.0 protocol dispatching over HTTP POST, SSE, or Interactive Stdio (--stdio)                   │   │
-│   │  - Comprehensive input schema validation and ANSI escape code normalization                                 │   │
-│   └──────────────────────────────────────────────────────┬──────────────────────────────────────────────────────┘   │
-│                                                          │                                                          │
-│   ┌──────────────────────────────────────────────────────┴──────────────────────────────────────────────────────┐   │
-│   │                                          Native Execution Core                                              │   │
-│   │                                                                                                             │   │
-│   │   ┌─────────────────────────────┐  ┌─────────────────────────────┐  ┌───────────────────────────────────┐   │   │
-│   │   │         PtyManager          │  │          FsManager          │  │           SessionStore            │   │   │
-│   │   │ - Windows ConPTY            │  │ - Atomic read/write         │  │ - Thread-safe session registry    │   │   │
-│   │   │ - POSIX PTY (openpt)        │  │ - Batch operations (atomic) │  │ - Lock-free ring buffer output    │   │   │
-│   │   │ - TIOCSWINSZ resize         │  │ - Path traversal protection │  │ - Inactivity TTL timeout          │   │   │
-│   │   │ - Child process tree kill   │  │ - Windows device blacklist  │  │ - Concurrency limit guards        │   │   │
-│   │   └─────────────────────────────┘  └─────────────────────────────┘  └───────────────────────────────────┘   │   │
-│   │                                                                                                             │   │
-│   │   ┌─────────────────────────────┐  ┌─────────────────────────────┐  ┌───────────────────────────────────┐   │   │
-│   │   │     EnvironmentDetector     │  │           Logger            │  │        Cloudflare Tunnel          │   │   │
-│   │   │ - Windows / Linux / Termux  │  │ - 300-entry ring buffer     │  │ - Managed cloudflared lifecycle   │   │   │
-│   │   │ - Android Sandbox (UID)     │  │ - Non-blocking drain        │  │ - Dynamic on-demand download      │   │   │
-│   │   │ - Verified Root (su check)  │  │ - JNI export interface      │  │ - HTTP/2 and QUIC protocol        │   │   │
-│   │   └─────────────────────────────┘  └─────────────────────────────┘  └───────────────────────────────────┘   │   │
-│   └─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────┘
-                                                         │
-                                                         ▼
-                         ┌────────────────────────────────────────────────────────────┐
-                         │                  Host Operating System                     │
-                         │   - Windows 10/11 (ConPTY, WinHTTP, Taskkill)              │
-                         │   - Linux x86_64 / ARM64 (POSIX PTY, forkpty, libcurl)     │
-                         │   - Android (Bionic libc, /system/bin/sh, Magisk su, JNI)  │
-                         └────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Clients["External AI Clients<br/>(Claude Desktop, ChatGPT, IDE Agents, CLI Client)"]
+
+    Clients -->|"REST, SSE, WebSocket, Stdio, or Tunnel"| Server
+
+    subgraph Server["MachineBridge Unified C++20 Server"]
+        direction TB
+
+        subgraph Http["HttpServer Listener"]
+            REST["REST Endpoints<br/>• /health, /api/environment<br/>• /api/status, /mcp, OAuth 2.1"]
+            SSE["Server-Sent Events<br/>• /sse stream & /messages<br/>• Session tracking"]
+            WS["WebSocket Server<br/>• /ws raw terminal streaming<br/>• Frame codec & signals"]
+            Auth["Constant-Time Auth<br/>• X-API-Key verification<br/>• RFC 8032 Ed25519"]
+        end
+
+        subgraph Mcp["McpServer Engine"]
+            Tools["15 Verified Tools<br/>• Terminal execution<br/>• Atomic filesystem operations<br/>• PTY session lifecycle"]
+            Transport["JSON-RPC 2.0 Dispatcher<br/>• HTTP POST, SSE, Stdio (--stdio)"]
+        end
+
+        subgraph Core["Native Execution Core"]
+            direction LR
+            PTY["PtyManager<br/>• Windows ConPTY<br/>• POSIX openpt<br/>• Process tree kill"]
+            FS["FsManager<br/>• Atomic read/write<br/>• Path traversal guard<br/>• Windows device filter"]
+            Store["SessionStore<br/>• Thread-safe registry<br/>• Bounded ring buffer<br/>• Inactivity TTL"]
+            Env["EnvironmentDetector<br/>• Windows / Linux / Termux<br/>• Android Sandbox (UID)<br/>• Verified Root check"]
+            Log["Logger<br/>• 300-entry ring buffer<br/>• Non-blocking drain<br/>• JNI export"]
+            Tunnel["Cloudflare Tunnel<br/>• Dynamic on-demand download<br/>• HTTP/2 and QUIC protocol"]
+        end
+
+        Http --> Mcp
+        Mcp --> Core
+    end
+
+    Core -->|"Native Kernel & Shell"| OS["Host Operating System<br/>• Windows (ConPTY, WinHTTP, Taskkill)<br/>• Linux (POSIX PTY, forkpty, libcurl)<br/>• Android (Bionic libc, /system/bin/sh, Magisk su, JNI)"]
 ```
 
 ---
@@ -149,6 +130,16 @@ Defined in [`include/machinebridge/logger.hpp`](../include/machinebridge/logger.
 
 MachineBridge strictly separates the **Server Process Identity** from **Child Execution Contexts**:
 
+```mermaid
+flowchart TD
+    subgraph Host["Host Operating System Process Boundary"]
+        ServerProcess["MachineBridge Server Process<br/>• UID = App Sandbox UID (e.g. 10171)<br/>• Capabilities = Limited Android Sandbox<br/>• Server runs fully unprivileged"]
+    end
+
+    ServerProcess -->|"Spawn Standard Shell"| SessionStd["Standard Session<br/>• Shell = /system/bin/sh<br/>• UID = 10171 (Sandbox)<br/>• Non-root process"]
+    ServerProcess -->|"Explicit Escalation (su verified)"| SessionRoot["Elevated Session<br/>• Shell = su<br/>• UID = 0 (Root)<br/>• Full Hardware Access"]
+```
+
 | Environment | Server Process UID | Session Default Shell | Session UID | Privileged Session Available |
 | :--- | :--- | :--- | :--- | :--- |
 | **Windows Desktop** | User Token | `powershell.exe` / `cmd.exe` | User Token | No (standard user) |
@@ -163,21 +154,25 @@ This design allows an Android app running as an unprivileged process inside the 
 
 ## 4. Threading & Concurrency Model
 
-```text
-  [Listener Thread] ─── Accepts incoming connections (epoll / poll / select)
-          │
-          ├── Dispatches request to Worker Thread Pool
-          │         │
-          │         ├── HTTP REST request ─── Handled immediately, returns JSON response
-          │         ├── MCP JSON-RPC ──────── Tool handler executed, returns tool result
-          │         └── WebSocket Upgrade ─── Connection registered with SessionStore
-          │
-  [PTY Reader Threads] (1 per active session)
-          │
-          └── Reads stdout/stderr from child PTY master pipe
-                    │
-                    ├── Appends to Session ring buffer
-                    └── Broadcasts to connected WebSockets & SSE subscribers
+```mermaid
+flowchart TD
+    Listener["Listener Thread (poll / epoll / select)<br/>Accepts incoming TCP connections"]
+
+    Listener -->|"Dispatch Connection"| Pool["Worker Thread Pool"]
+
+    subgraph Handlers["Request Handlers"]
+        direction TB
+        Pool -->|"HTTP REST"| RESTHandler["Handle Request & return JSON response"]
+        Pool -->|"MCP Tool Call"| MCPHandler["Execute Tool & return JSON-RPC result"]
+        Pool -->|"WebSocket Upgrade"| WSUpgrade["Register WebSocket in SessionStore"]
+    end
+
+    subgraph PTYThreads["Dedicated PTY Reader Threads (1 per Session)"]
+        direction TB
+        Reader["PTY Master Pipe Reader"]
+        Reader -->|"Append Chunks"| RingBuffer["Session Ring Buffer (Bounded)"]
+        Reader -->|"Push ANSI Stream"| Broadcast["Broadcast to WebSocket & SSE Clients"]
+    end
 ```
 
 * **Non-Blocking I/O**: Pipe reads for PTY sessions execute in dedicated I/O reader threads, preventing slow terminal applications from starving HTTP endpoints.

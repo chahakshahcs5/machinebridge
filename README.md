@@ -58,23 +58,12 @@ Unstripped Android binaries originally measured ~19 MB due to full DWARF debug i
 
 Machine Bridge strictly separates **Server Process Identity** from **Child Execution Session Identity**:
 
-```text
-Machine Bridge Server Process
-(Host Environment: UID = App UID, is_root = false, privileged_shell_available = true/false)
-        │
-        ├── Standard Session
-        │       ↓
-        │   /system/bin/sh
-        │       ↓
-        │   Session UID = App UID, is_root = false
-        │
-        └── Privileged Session (if su is verified available)
-                ↓
-               su
-                ↓
-            Root Shell
-                ↓
-            Session UID = 0, is_root = true
+```mermaid
+flowchart TD
+    Server["MachineBridge Server Process<br/>(Host UID = App UID | is_root = false | su_available = bool)"]
+    
+    Server --> Standard["Standard Session (/system/bin/sh)<br/>Session UID = App UID (10171)<br/>is_root = false"]
+    Server -->|If su verified| Privileged["Privileged Session (su)<br/>Session UID = 0 (Root)<br/>is_root = true"]
 ```
 
 ### 1. Host Environment (`EnvironmentInfo`)
@@ -96,50 +85,39 @@ Describes individual child execution sessions:
 
 ## Architecture & Features
 
-```text
-                            ┌───────────────────────────────────────────────┐
-                            │               External Clients                │
-                            │ (ChatGPT, Claude Desktop, Web UI, CLI Agent) │
-                            └───────────────────────┬───────────────────────┘
-                                                    │
-                                     [Cloudflare Tunnel / HTTPS / LAN]
-                                                    │
-                                                    ▼
-┌───────────────────────────────────────────────────────────────────────────────────────────────┐
-│ MachineBridge Unified C++ Server (Port 8080)                                                  │
-│                                                                                               │
-│  ┌───────────────────────┐  ┌──────────────────────┐  ┌────────────────────────────────────┐  │
-│  │   HTTP / REST API     │  │  WebSocket Streaming │  │    Server-Sent Events (SSE)        │  │
-│  │  - Health checks      │  │  - Bi-directional PTY│  │    - /sse & /messages endpoints    │  │
-│  │  - /api/environment   │  │    terminal I/O      │  │    - Terminal output push          │  │
-│  │  - /api/status        │  │  - Signals (SigInt)  │  │    - RFC 8032 signed headers       │  │
-│  │  - OAuth 2.1 PKCE UI  │  │  - Window resize     │  │                                    │  │
-│  └───────────────────────┘  └──────────────────────┘  └────────────────────────────────────┘  │
-│                                                                                               │
-│  ┌─────────────────────────────────────────────────────────────────────────────────────────┐  │
-│  │                     Model Context Protocol (MCP) Engine                                 │  │
-│  │  - 15 verified tools (Execution, Filesystem batch, Session lifecycle)                   │  │
-│  │  - JSON-RPC 2.0 over HTTP (/mcp, /sse) or Interactive Stdio (`--stdio`)                 │  │
-│  └─────────────────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                               │
-│  ┌─────────────────────────────────────────────────────────────────────────────────────────┐  │
-│  │                     Native Execution Engine & Storage                                   │  │
-│  │  - Windows ConPTY (CreatePseudoConsole) & POSIX PTY (posix_openpt)                      │  │
-│  │  - EnvironmentDetector (Windows, Linux, Termux, Android Sandbox, Verified Root)        │  │
-│  │  - In-memory session ring buffers with TTL expiration (zero SQL/DB dependencies)        │  │
-│  │  - Constant-time API key verification & RFC 8032 Curve25519 cryptography                │  │
-│  │  - Path traversal & Windows reserved device name security defenses                      │  │
-│  │  - Thread-safe recent log ring buffer (300 lines) with JNI drain interface              │  │
-│  └─────────────────────────────────────────────────────────────────────────────────────────┘  │
-└───────────────────────────────────────────────┬───────────────────────────────────────────────┘
-                                                │
-                                                ▼
-                            ┌───────────────────────────────────────┐
-                            │    Cloudflare Tunnel (cloudflared)    │
-                            │  - Named tunnels with token           │
-                            │  - Quick ad-hoc public trycloudflare  │
-                            │  - Downloaded on demand at runtime    │
-                            └───────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Clients["External AI Clients<br/>(ChatGPT, Claude Desktop, Web UI, CLI Agent)"]
+
+    Clients -->|"Cloudflare Tunnel / HTTPS / LAN / Stdio"| Server
+
+    subgraph Server["MachineBridge Unified C++20 Server (Port 8080)"]
+        direction TB
+
+        subgraph Protocols["Protocol & Transport Tier"]
+            direction LR
+            REST["HTTP / REST API<br/>• /health, /api/environment<br/>• /api/status, OAuth 2.1 PKCE"]
+            WS["WebSocket Streaming<br/>• Bi-directional PTY I/O<br/>• Signals & Window Resize"]
+            SSE["Server-Sent Events<br/>• /sse & /messages<br/>• PTY stream push"]
+        end
+
+        subgraph MCPEngine["Model Context Protocol (MCP) Engine"]
+            MCP["JSON-RPC 2.0 Engine<br/>• 15 Verified Tools (Terminal, FS, Session)<br/>• Transports: HTTP POST, SSE, Stdio (--stdio)"]
+        end
+
+        subgraph ExecutionCore["Native Execution Engine & Storage"]
+            direction LR
+            PTY["PtyManager<br/>• Windows ConPTY<br/>• POSIX openpt"]
+            FS["FsManager<br/>• Path traversal guards<br/>• Atomic batch_fs"]
+            Session["SessionStore<br/>• In-memory ring buffer<br/>• TTL expiration"]
+            Env["EnvironmentDetector<br/>• Windows, Linux, Termux<br/>• Android Sandbox / Root"]
+        end
+
+        Protocols --> MCPEngine
+        MCPEngine --> ExecutionCore
+    end
+
+    Server -->|"Dynamic Subprocess"| CF["Cloudflare Tunnel (cloudflared)<br/>• Quick trycloudflare or Named Tunnel<br/>• Downloaded on demand at runtime"]
 ```
 
 ---

@@ -20,6 +20,29 @@ MachineBridge features a comprehensive automated test suite implemented via CMak
 | **`test_server`** | `tests/test_server.cpp` | Integration | End-to-end HTTP server lifecycle, `/health` endpoint, `/api/environment`, MCP over HTTP |
 | **`test_pty_android`** | `tests/test_pty_android.cpp` | Platform Specific | POSIX PTY allocation on Android Bionic, `/system/bin/sh` spawning, I/O streaming, window resize, signals |
 
+```mermaid
+flowchart TD
+    CTest["CMake / CTest Automated Test Suite"]
+
+    subgraph Suites["Test Categories"]
+        direction LR
+        Crypto["Crypto & Auth<br/>• test_crypto<br/>• test_oauth"]
+        Wire["Wire Protocol<br/>• test_protocol<br/>• test_server"]
+        Storage["Filesystem Engine<br/>• test_fs<br/>• test_batch"]
+        Process["Process & Terminal<br/>• test_executor<br/>• test_tools<br/>• test_pty_android"]
+    end
+
+    subgraph Targets["Execution Targets"]
+        direction LR
+        Win["Windows (MSVC)<br/>8/8 Tests Passed"]
+        Lin["Linux / WSL (GCC)<br/>8/8 Tests Passed"]
+        And["Android Devices<br/>• Remote SSH (Root / Termux)<br/>• In-App Diagnostic Runner"]
+    end
+
+    CTest --> Suites
+    Suites --> Targets
+```
+
 ---
 
 ## 3. Running Tests Locally

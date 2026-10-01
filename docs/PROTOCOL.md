@@ -8,6 +8,27 @@ All endpoints (with the exception of `/health` and OAuth authorization UI) requi
 * Header: `X-API-Key: <your-api-key>`
 * Query Parameter: `?api_key=<your-api-key>`
 
+```mermaid
+flowchart TD
+    Client["Client / Agent"]
+
+    Client -->|"HTTP GET /health"| Health["Public Health Check (No Auth)"]
+    Client -->|"HTTP GET /api/*"| REST["REST API (Environment, Status)"]
+    Client -->|"HTTP POST /mcp"| MCP["JSON-RPC 2.0 Tool Dispatch"]
+    Client -->|"HTTP GET /sse"| SSE["Server-Sent Events Stream"]
+    Client -->|"HTTP POST /messages"| SSEMsg["SSE Message Channel"]
+    Client -->|"Upgrade: websocket"| WS["Bi-directional PTY Terminal (/ws)"]
+    Client -->|"Interactive stdin/stdout"| Stdio["MCP Stdio Pipe (--stdio)"]
+
+    subgraph Auth["Security Boundary"]
+        REST --> Verify["Constant-Time X-API-Key Verification"]
+        MCP --> Verify
+        SSE --> Verify
+        SSEMsg --> Verify
+        WS --> Verify
+    end
+```
+
 ---
 
 ## 2. HTTP REST Endpoints

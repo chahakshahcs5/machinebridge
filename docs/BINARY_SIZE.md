@@ -18,9 +18,19 @@ One of the foundational design pillars of MachineBridge is delivering an ultra-l
 
 When building C++ code with modern C++20 features (concepts, templates, string views) using the Android NDK, debug builds and unstripped release binaries are surprisingly large:
 
-```text
-Unstripped Android Binary:    19,240 KB  (18.8 MB)  ████████████████████████████████████
-Stripped Android Binary:       1,402 KB   (1.37 MB)  ██
+```mermaid
+flowchart LR
+    NDK["Unstripped NDK Build<br/>19,240 KB (18.8 MB)<br/>• Full DWARF debug tables<br/>• Template instantiations"]
+
+    subgraph Optimization["Optimization & Stripping Pipeline"]
+        direction TB
+        GC["Linker GC<br/>-Wl,--gc-sections"]
+        Strip["llvm-strip --strip-all<br/>Eliminates non-runtime symbols"]
+        GC --> Strip
+    end
+
+    NDK --> Optimization
+    Optimization --> Final["Final Standalone Binary<br/>1,402 KB (1.40 MB)<br/>(92.7% size reduction)"]
 ```
 
 ### Why Was the Unstripped Binary 19 MB?
@@ -62,13 +72,15 @@ In Android Gradle Plugin (AGP) 8+, native `.so` files are stored **uncompressed*
 
 ### Complete APK Composition Breakdown
 
-```text
-machinebridge.apk (Total: 523 KB / 535,794 bytes)
-├── lib/arm64-v8a/libmachinebridge.so ── 510 KB  (Native C++ server engine)
-├── classes.dex ────────────────────────  18.4 KB (R8-minified Java bytecode)
-├── resources.arsc ─────────────────────   1.8 KB (Compiled string & layout tables)
-├── AndroidManifest.xml ────────────────   1.2 KB (Binary manifest)
-└── META-INF / res assets ──────────────   2.4 KB (Vector icons, XML cards)
+```mermaid
+flowchart TD
+    APK["machinebridge.apk<br/>Total: 523 KB (535,794 bytes)"]
+
+    APK --> Native["lib/arm64-v8a/libmachinebridge.so<br/>510 KB (DEFLATE compressed from 1.39 MB)"]
+    APK --> Dex["classes.dex<br/>18.4 KB (R8-minified Java bytecode)"]
+    APK --> Res["resources.arsc<br/>1.8 KB (String & layout tables)"]
+    APK --> Manifest["AndroidManifest.xml<br/>1.2 KB (Binary manifest)"]
+    APK --> Meta["META-INF & XML Assets<br/>2.4 KB (Vector icons, dark cards)"]
 ```
 
 **Zero Heavy UI Libraries**: No Jetpack Compose, no Material Components bloat, no Kotlin runtime (`kotlin-stdlib` adds ~1.5 MB). Pure Android Java framework with native dark-mode vector cards.
