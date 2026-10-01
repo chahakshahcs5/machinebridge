@@ -1,0 +1,52 @@
+# Build directories and outputs
+build/
+build-*/
+bin/
+out/
+dist/
+
+# Object, library, and binary files
+*.o
+*.obj
+*.lib
+*.a
+*.dll
+*.so
+*.so.*
+*.dylib
+*.exe
+*.exp
+*.ilk
+*.pdb
+*.idb
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+compile_commands.json
+.ninja_deps
+.ninja_log
+
+# IDE & Editor files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.VC.db
+*.opendb
+
+# Runtime & Scratch
+.cache/
+.machinebridge/
+scratch/
+.env
+*.tmp
+*.log
+
+# OS-specific
+.DS_Store
+Thumbs.db
