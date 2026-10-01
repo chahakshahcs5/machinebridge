@@ -68,13 +68,13 @@ MachineBridge eliminates multi-daemon deployment complexity, external database d
 ## 2. Core Subsystems
 
 ### 2.1 `MachineBridgeServer` (Top-Level Orchestrator)
-Defined in [`include/machinebridge/server.hpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/include/machinebridge/server.hpp) and implemented in [`src/server.cpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/src/server.cpp).
+Defined in [`include/machinebridge/server.hpp`](../include/machinebridge/server.hpp) and implemented in [`src/server.cpp`](../src/server.cpp).
 * Manages the global server lifecycle (`start()`, `stop()`, `is_running()`).
 * Owns and initializes the `HttpServer`, `McpServer`, `SessionStore`, `EnvironmentDetector`, and `TunnelManager`.
 * Implements clean asynchronous shutdown: detaches background tunnel processes and gracefully cleans up active PTY sessions.
 
 ### 2.2 `HttpServer` (Networking & Protocols)
-Defined in [`include/machinebridge/http_server.hpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/include/machinebridge/http_server.hpp) and implemented in [`src/http_server.cpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/src/http_server.cpp).
+Defined in [`include/machinebridge/http_server.hpp`](../include/machinebridge/http_server.hpp) and implemented in [`src/http_server.cpp`](../src/http_server.cpp).
 * **Multi-Protocol Support**:
   * **REST**: Fast routing for `/health`, `/api/environment`, `/api/status`, `/mcp`, and OAuth endpoints.
   * **Server-Sent Events (SSE)**: Long-lived streaming connection over `GET /sse` and message routing over `POST /messages`.
@@ -82,7 +82,7 @@ Defined in [`include/machinebridge/http_server.hpp`](file:///c:/Users/chaha/Proj
 * **Authentication**: Every request (except `/health`) validates the `X-API-Key` header or `api_key` query parameter against the server's cryptographic key using constant-time comparison to prevent side-channel timing attacks.
 
 ### 2.3 `McpServer` (Model Context Protocol Engine)
-Defined in [`include/machinebridge/mcp.hpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/include/machinebridge/mcp.hpp) and implemented in [`src/mcp.cpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/src/mcp.cpp).
+Defined in [`include/machinebridge/mcp.hpp`](../include/machinebridge/mcp.hpp) and implemented in [`src/mcp.cpp`](../src/mcp.cpp).
 * Fully compliant with the **Model Context Protocol (MCP)** specification.
 * Supports both **HTTP/SSE transport** and **interactive stdio mode** (`--stdio`) for local AI agents (e.g., Claude Desktop).
 * Exposes **15 verified tools**:
@@ -103,7 +103,7 @@ Defined in [`include/machinebridge/mcp.hpp`](file:///c:/Users/chaha/Projects/mac
   15. `close_session` — Terminate PTY process tree and reclaim resources.
 
 ### 2.4 `PtyManager` & Virtual Terminals
-Defined in [`include/machinebridge/pty.hpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/include/machinebridge/pty.hpp).
+Defined in [`include/machinebridge/pty.hpp`](../include/machinebridge/pty.hpp).
 * **Windows Backend (`pty_windows.cpp`)**:
   * Utilizes modern Windows Pseudo Console (`CreatePseudoConsole`, ConPTY).
   * Configures process startup attributes via `InitializeProcThreadAttributeList` and `UpdateProcThreadAttribute(PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE)`.
@@ -116,19 +116,19 @@ Defined in [`include/machinebridge/pty.hpp`](file:///c:/Users/chaha/Projects/mac
   * Safe process group termination using `kill(-pid, SIGTERM)` followed by `SIGKILL`.
 
 ### 2.5 `FsManager` (Filesystem Engine & Security)
-Defined in [`include/machinebridge/fs.hpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/include/machinebridge/fs.hpp) and implemented in [`src/fs.cpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/src/fs.cpp).
+Defined in [`include/machinebridge/fs.hpp`](../include/machinebridge/fs.hpp) and implemented in [`src/fs.cpp`](../src/fs.cpp).
 * Implements robust path traversal protection (`..`, symlink loops, relative escaping).
 * Windows reserved device name protection (blocks access to `CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`).
 * Atomic batch operations: `batch_fs` validates operations before execution and supports stop-on-error semantics.
 
 ### 2.6 `SessionStore` (In-Memory Session Registry)
-Defined in [`include/machinebridge/session_store.hpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/include/machinebridge/session_store.hpp) and implemented in [`src/session_store.cpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/src/session_store.cpp).
+Defined in [`include/machinebridge/session_store.hpp`](../include/machinebridge/session_store.hpp) and implemented in [`src/session_store.cpp`](../src/session_store.cpp).
 * Stores active sessions in a concurrent `std::unordered_map` guarded by read/write locks.
 * Each session maintains a fixed-size ring buffer for streaming terminal output.
 * Automatic background sweeper cleans up inactive sessions exceeding the configured TTL (default: 3600 seconds).
 
 ### 2.7 `EnvironmentDetector` (Multi-Environment Awareness)
-Defined in [`include/machinebridge/environment.hpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/include/machinebridge/environment.hpp) and implemented in [`src/environment.cpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/src/environment.cpp).
+Defined in [`include/machinebridge/environment.hpp`](../include/machinebridge/environment.hpp) and implemented in [`src/environment.cpp`](../src/environment.cpp).
 * Discovers host environment dynamically at startup:
   * **Windows**: ConPTY available, `cmd.exe` or `powershell.exe` defaults, user identity.
   * **Linux (Native / WSL)**: POSIX PTY, `/bin/bash` default, POSIX UID/GID.
@@ -138,7 +138,7 @@ Defined in [`include/machinebridge/environment.hpp`](file:///c:/Users/chaha/Proj
 * Exposes complete capabilities to AI agents via `GET /api/environment`.
 
 ### 2.8 `Logger` (Lock-Free Ring Buffer)
-Defined in [`include/machinebridge/logger.hpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/include/machinebridge/logger.hpp) and implemented in [`src/logger.cpp`](file:///c:/Users/chaha/Projects/machinebridge-world/machinebridge-cpp/src/logger.cpp).
+Defined in [`include/machinebridge/logger.hpp`](../include/machinebridge/logger.hpp) and implemented in [`src/logger.cpp`](../src/logger.cpp).
 * Implements a thread-safe 300-entry ring buffer.
 * Exposes `get_and_clear_recent_logs()` which drains the buffer atomically.
 * Consumed by Android JNI bridge every second to stream logs to the UI without blocking worker threads.

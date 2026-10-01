@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
                       << "  machinebridge-server --tunnel --log\n"
                       << "  machinebridge-server --tunnel --protocol http2\n"
                       << "  machinebridge-server --port 9000 --api-key my-secret --tunnel\n"
-                      << "  machinebridge-server --workspace C:\\Users\\chaha\\Projects\n";
+                      << "  machinebridge-server --workspace C:\\Projects\\workspace\n";
             return 0;
         }
         if (arg == "--stdio") {
