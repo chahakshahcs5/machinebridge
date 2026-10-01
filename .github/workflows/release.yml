@@ -51,11 +51,12 @@ jobs:
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
+        shell: bash
         run: |
           cmake -B build -S . \
             -DCMAKE_BUILD_TYPE=Release \
             -DMACHINEBRIDGE_STATIC_RUNTIME=ON \
-            -DCLOUDFLARE_TUNNEL_DIR=${{ github.workspace }}/cloudflare-tunnel \
+            -DCLOUDFLARE_TUNNEL_DIR="${{ github.workspace }}/cloudflare-tunnel" \
             -DMACHINEBRIDGE_ENABLE_TUNNEL=ON
 
       - name: Build
